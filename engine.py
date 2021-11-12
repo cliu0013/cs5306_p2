@@ -1,6 +1,8 @@
 # import parser
 import pandas as pd
+import sentiments_data
 import stock_data
+
 
 POS = 1
 NEU = 0
@@ -18,6 +20,7 @@ class Trader:
         self.direction = direction
 
     def hasNext(self):
+
         return
 
     def next(self):
@@ -48,4 +51,5 @@ class Trader:
         return
 
 
-trader = Trader(0, 0, 0, 0, 0)
+trader = Trader(sentiments_data.getSentiments("s&p"),
+                stock_data.getStockData("s&p"), 1_000_000, 0, 100, 1)
