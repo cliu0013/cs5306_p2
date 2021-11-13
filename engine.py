@@ -1,7 +1,8 @@
 # import parser
+import csv
 import pandas as pd
-import sentiments_data
 import stock_data
+import get_sentiments
 
 
 POS = 1
@@ -12,44 +13,98 @@ NEG = -1
 class Trader:
 
     def __init__(self, sentiments, prices, cash, shares, daily, direction) -> None:
-        self.sentiments = sentiments
+        self.sentiments = sorted(sentiments.items(), key=lambda x: [0])
         self.prices = prices
         self.cash = cash
         self.shares = shares
         self.daily = daily
         self.direction = direction
+        self.records = []
+        self.base_shares = self.cash / self.prices["2021-01-28"]
 
-    def hasNext(self):
-
+    def buy(self, date):
+        if date not in self.prices:
+            return
+        price = self.prices[date]
+        self.cash -= price * self.daily
+        self.shares += self.daily
         return
 
-    def next(self):
+    def sell(self, date):
+        if date not in self.prices:
+            return
+        price = self.prices[date]
+        self.cash += price * self.daily
+        self.shares -= self.daily
         return
 
-    def buy(self):
-        return
-
-    def sell(self):
-        return
+    def getAssets(self, date):
+        return self.cash + self.shares * self.prices[date]
 
     def trade(self):
-        while self.hasNext():
-            sentiment = self.next()
+        for date, sentiment in self.sentiments:
+            date = str(date).split()[0]
             if sentiment == POS and self.direction:
-                self.buy()
-                pass
-            if sentiment == NEG and self.direction:
-                self.sell()
-                pass
-            if sentiment == POS and not self.direction:
-                self.sell()
-                pass
-            if sentiment == NEG and not self.direction:
-                self.buy()
-                pass
+                self.buy(date)
+            elif sentiment == NEG and self.direction:
+                self.sell(date)
+            elif sentiment == POS and not self.direction:
+                self.sell(date)
+            elif sentiment == NEG and not self.direction:
+                self.buy(date)
+
+            if date in self.prices:
+                self.records.append([date, self.getAssets(
+                    date), self.base_shares * self.prices[date]])
+            elif self.records:
+                self.records.append(
+                    [date, self.records[-1][1], self.records[-1][2]])
+
+            # print(date, self.cash, self.shares,
+            #       self.records[-1] if self.records else "N/A")
 
         return
 
 
-trader = Trader(sentiments_data.getSentiments("s&p"),
-                stock_data.getStockData("s&p"), 1_000_000, 0, 100, 1)
+trader = Trader(get_sentiments.getSentiments("s&p"),
+                stock_data.getStockData("s&p"), 1_000_000, 0, 3, 1)
+trader.trade()
+
+# print(trader.records)
+
+
+# field names
+fields = ['date', 'value']
+
+# data rows of csv file
+rows = trader.records
+
+with open('records.csv', 'w') as f:
+
+    # using csv.writer method from CSV package
+    write = csv.writer(f)
+
+    write.writerow(fields)
+    write.writerows(rows)
+
+
+trader = Trader(get_sentiments.getSentiments("gme"),
+                stock_data.getStockData("gme"), 1_000_000, 0, 700, 1)
+trader.trade()
+
+# print(trader.records)
+
+
+# field names
+fields = ['date', 'value']
+
+# data rows of csv file
+rows = trader.records
+
+with open('gme_records.csv', 'w') as f:
+
+    # using csv.writer method from CSV package
+    write = csv.writer(f)
+
+    write.writerow(fields)
+    write.writerows(rows)
